@@ -262,7 +262,7 @@ def process_unlabeled(path, trained_model, ignore_columns=None):
     assert set(dataset.all_text_fields) == set(train_info.all_text_fields)
 
     after_load = timer()
-    logger.info('Data load time: {}s'.format(after_load - begin))
+    logger.info('Data load time: {}s', (after_load - begin))
 
     reverse_fields_dict = dict((pair[1], pair[0]) for pair in fields)
     for field, name in reverse_fields_dict.items():
@@ -279,6 +279,6 @@ def process_unlabeled(path, trained_model, ignore_columns=None):
     }
 
     after_vocab = timer()
-    logger.info('Vocab update time: {}s'.format(after_vocab - after_load))
+    logger.info('Vocab update time: {}s', (after_vocab - after_load))
 
     return dataset
