@@ -94,11 +94,9 @@ class MatchingDataset(data.Dataset):
         label_field (str): Name of the column containing labels.
         id_field (str): Name of the column containing tuple pair ids.
     """
-
     class CacheStaleException(Exception):
         r"""Raised when the dataset cache is stale and no fallback behavior is specified.
         """
-        pass
 
     def __init__(self,
                  fields,
@@ -182,12 +180,14 @@ class MatchingDataset(data.Dataset):
 
         self.all_left_fields = []
         for name, field in six.iteritems(self.fields):
-            if name.startswith(self.column_naming['left']) and field is not None:
+            if name.startswith(
+                    self.column_naming['left']) and field is not None:
                 self.all_left_fields.append(name)
 
         self.all_right_fields = []
         for name, field in six.iteritems(self.fields):
-            if name.startswith(self.column_naming['right']) and field is not None:
+            if name.startswith(
+                    self.column_naming['right']) and field is not None:
                 self.all_right_fields.append(name)
 
         self.canonical_text_fields = []
@@ -224,13 +224,18 @@ class MatchingDataset(data.Dataset):
         self.metadata = {}
 
         # Create an iterator over the entire dataset.
-        train_iter = MatchingIterator(
-            self, self, train=False, batch_size=1024, device='cpu', sort_in_buckets=False)
+        train_iter = MatchingIterator(self,
+                                      self,
+                                      train=False,
+                                      batch_size=1024,
+                                      device='cpu',
+                                      sort_in_buckets=False)
         counter = defaultdict(Counter)
 
         # For each attribute, find the number of times each word id occurs in the dataset.
         # Note that word ids here also include ``UNK`` tokens, padding tokens, etc.
-        for batch in pyprind.prog_bar(train_iter, title='\nBuilding vocabulary'):
+        for batch in pyprind.prog_bar(train_iter,
+                                      title='\nBuilding vocabulary'):
             for name in self.all_text_fields:
                 attr_input = getattr(batch, name)
                 counter[name].update(attr_input.data.data.view(-1).tolist())
@@ -269,14 +274,18 @@ class MatchingDataset(data.Dataset):
             embed[name] = field_embed[field]
 
         # Create an iterator over the entire dataset.
-        train_iter = MatchingIterator(
-            self, self, train=False, batch_size=1024, device='cpu', sort_in_buckets=False)
+        train_iter = MatchingIterator(self,
+                                      self,
+                                      train=False,
+                                      batch_size=1024,
+                                      device='cpu',
+                                      sort_in_buckets=False)
         attr_embeddings = defaultdict(list)
 
         # Run the constructed neural network to compute weighted sequence embeddings
         # for each attribute of each example in the dataset.
-        for batch in pyprind.prog_bar(train_iter,
-            title='\nComputing principal components'):
+        for batch in pyprind.prog_bar(
+                train_iter, title='\nComputing principal components'):
             for name in self.all_text_fields:
                 attr_input = getattr(batch, name)
                 embeddings = inv_freq_pool(embed[name](attr_input))
@@ -312,7 +321,8 @@ class MatchingDataset(data.Dataset):
         using the whitespace delimiter.
         """
         rows = []
-        columns = list(name for name, field in six.iteritems(self.fields) if field)
+        columns = list(name for name, field in six.iteritems(self.fields)
+                       if field)
         for ex in self.examples:
             row = []
             for attr in columns:
@@ -331,10 +341,12 @@ class MatchingDataset(data.Dataset):
         A key to use for sorting dataset examples for batching together examples with
         similar lengths to minimize padding."""
 
-        return interleave_keys([len(getattr(ex, attr)) for attr in self.all_text_fields])
+        return interleave_keys(
+            [len(getattr(ex, attr)) for attr in self.all_text_fields])
 
     @staticmethod
-    def save_cache(datasets, fields, datafiles, cachefile, column_naming, state_args):
+    def save_cache(datasets, fields, datafiles, cachefile, column_naming,
+                   state_args):
         r"""Save datasets and corresponding metadata to cache.
 
         This method also saves as many data loading arguments as possible to help ensure
@@ -355,7 +367,9 @@ class MatchingDataset(data.Dataset):
         """
         examples = [dataset.examples for dataset in datasets]
         train_metadata = datasets[0].metadata
-        datafiles_modified = [os.path.getmtime(datafile) for datafile in datafiles]
+        datafiles_modified = [
+            os.path.getmtime(datafile) for datafile in datafiles
+        ]
         vocabs = {}
         field_args = {}
         reverse_fields = {}
@@ -423,7 +437,9 @@ class MatchingDataset(data.Dataset):
         if datafiles != cached_data['datafiles']:
             cache_stale_cause.add('Data file list has changed.')
 
-        datafiles_modified = [os.path.getmtime(datafile) for datafile in datafiles]
+        datafiles_modified = [
+            os.path.getmtime(datafile) for datafile in datafiles
+        ]
         if datafiles_modified != cached_data['datafiles_modified']:
             cache_stale_cause.add('One or more data files have been modified.')
 
@@ -431,10 +447,13 @@ class MatchingDataset(data.Dataset):
             cache_stale_cause.add('Fields have changed.')
 
         for name, field in six.iteritems(fields):
-            none_mismatch = (field is None) != (cached_data['field_args'][name] is None)
+            none_mismatch = (field is None) != (cached_data['field_args'][name]
+                                                is None)
             args_mismatch = False
-            if field is not None and cached_data['field_args'][name] is not None:
-                args_mismatch = field.preprocess_args() != cached_data['field_args'][name]
+            if field is not None and cached_data['field_args'][
+                    name] is not None:
+                args_mismatch = field.preprocess_args(
+                ) != cached_data['field_args'][name]
             if none_mismatch or args_mismatch:
                 cache_stale_cause.add('Field arguments have changed.')
             if field is not None and not isinstance(field, MatchingField):
@@ -444,8 +463,8 @@ class MatchingDataset(data.Dataset):
             cache_stale_cause.add('Other arguments have changed.')
 
         cache_stale_cause.update(
-            MatchingDataset.state_args_compatibility(state_args,
-                                                     cached_data['state_args']))
+            MatchingDataset.state_args_compatibility(
+                state_args, cached_data['state_args']))
 
         return cached_data, cache_stale_cause
 
@@ -535,36 +554,47 @@ class MatchingDataset(data.Dataset):
 
         datasets = None
         if cache:
-            datafiles = list(f for f in (train, validation, test) if f is not None)
-            datafiles = [os.path.expanduser(os.path.join(path, d)) for d in datafiles]
+            datafiles = list(f for f in (train, validation, test)
+                             if f is not None)
+            datafiles = [
+                os.path.expanduser(os.path.join(path, d)) for d in datafiles
+            ]
             cachefile = os.path.expanduser(os.path.join(path, cache))
             try:
                 cached_data, cache_stale_cause = MatchingDataset.load_cache(
-                    fields_dict, datafiles, cachefile, column_naming, state_args)
+                    fields_dict, datafiles, cachefile, column_naming,
+                    state_args)
 
                 if check_cached_data and cache_stale_cause:
                     if not auto_rebuild_cache:
-                        raise MatchingDataset.CacheStaleException(cache_stale_cause)
+                        raise MatchingDataset.CacheStaleException(
+                            cache_stale_cause)
                     else:
-                        logger.warning('Rebuilding data cache because: %s', list(cache_stale_cause))
+                        logger.warning('Rebuilding data cache because: %s',
+                                       list(cache_stale_cause))
 
                 if not check_cached_data or not cache_stale_cause:
-                    datasets = MatchingDataset.restore_data(fields, cached_data)
+                    datasets = MatchingDataset.restore_data(
+                        fields, cached_data)
 
             except IOError:
                 pass
 
         if not datasets:
             begin = timer()
-            dataset_args = {'fields': fields, 'column_naming': column_naming, **kwargs}
+            dataset_args = {
+                'fields': fields,
+                'column_naming': column_naming,
+                **kwargs
+            }
             train_data = None if train is None else cls(
                 path=os.path.join(path, train), **dataset_args)
             val_data = None if validation is None else cls(
                 path=os.path.join(path, validation), **dataset_args)
             test_data = None if test is None else cls(
                 path=os.path.join(path, test), **dataset_args)
-            datasets = tuple(
-                d for d in (train_data, val_data, test_data) if d is not None)
+            datasets = tuple(d for d in (train_data, val_data, test_data)
+                             if d is not None)
 
             after_load = timer()
             logger.info('Data load took: {}s'.format(after_load - begin))
@@ -572,20 +602,24 @@ class MatchingDataset(data.Dataset):
             fields_set = set(fields_dict.values())
             for field in fields_set:
                 if field is not None and field.use_vocab:
-                    field.build_vocab(
-                        *datasets, vectors=embeddings, cache=embeddings_cache)
+                    field.build_vocab(*datasets,
+                                      vectors=embeddings,
+                                      cache=embeddings_cache)
             after_vocab = timer()
             logger.info('Vocab construction time: {}s'.format(after_vocab - after_load))
+                                                              after_load))
 
             if train:
                 datasets[0].compute_metadata(train_pca)
             after_metadata = timer()
             logger.info(
                 'Metadata computation time: {}s'.format(after_metadata - after_vocab))
+                                                        after_vocab))
 
             if cache:
-                MatchingDataset.save_cache(datasets, fields_dict, datafiles, cachefile,
-                                           column_naming, state_args)
+                MatchingDataset.save_cache(datasets, fields_dict, datafiles,
+                                           cachefile, column_naming,
+                                           state_args)
                 after_cache = timer()
                 logger.info('Cache save time: {}s'.format(after_cache - after_vocab))
 
@@ -616,7 +650,6 @@ def interleave_keys(keys):
     values for the key defined by this function. Useful for tasks with two
     text fields like machine translation or natural language inference.
     """
-
     def interleave(args):
         return ''.join([x for t in zip(*args) for x in t])
 
