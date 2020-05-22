@@ -103,7 +103,7 @@ class Optimizer(object):
         self.betas = [beta1, beta2]
         self.adagrad_accum = adagrad_accum
         self.params = None
-        logger.info('Initial learning rate: {:0.3e}'.format(self.lr))
+        logger.info('Initial learning rate: {lr:0.3e}', lr=self.lr)
 
     def set_parameters(self, params):
         """Sets the model parameters and initializes the base optimizer.
@@ -114,7 +114,7 @@ class Optimizer(object):
                 gradients will be filtered out for optimization.
         """
         self.params = []
-        for k, p in params:
+        for _, p in params:
             if p.requires_grad:
                 self.params.append(p)
         if self.method == 'sgd':
@@ -170,7 +170,8 @@ class Optimizer(object):
 
         if self.start_decay:
             self.lr = self.lr * self.lr_decay
-            logger.info('Setting learning rate to {:0.3e} for next epoch'.format(self.lr))
+            logger.info('Setting learning rate to {lr:0.3e} for next epoch',
+                        lr=self.lr)
 
         self.last_acc = acc
         self._set_rate(self.lr)

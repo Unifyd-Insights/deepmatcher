@@ -105,7 +105,7 @@ class LazyModule(nn.Module):
                     input_size=self._get_input_size(input, *args, **kwargs),
                     **self._init_kwargs)
             except TypeError as e:
-                logger.debug('Got exception when passing input size: ' + str(e))
+                logger.debug('Got exception when passing input size: %s', e, exc_info=True)
                 self._init(*self._init_args, **self._init_kwargs)
             for fn in self._fns:
                 super(LazyModule, self)._apply(fn)

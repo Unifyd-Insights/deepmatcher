@@ -58,7 +58,7 @@ class FastTextBinary(vocab.Vectors):
     def cache(self, name, cache, url=None):
         path = os.path.join(cache, name)
         if not os.path.isfile(path) and url:
-            logger.info('Downloading vectors from {}'.format(url))
+            logger.info('Downloading vectors from {url}', url=url)
             if not os.path.exists(cache):
                 os.makedirs(cache)
             if not os.path.isfile(self.destination):
@@ -66,7 +66,7 @@ class FastTextBinary(vocab.Vectors):
                     download_from_url(url, self.destination)
                 else:
                     urlretrieve(url, self.destination)
-            logger.info('Extracting vectors into {}'.format(cache))
+            logger.info('Extracting vectors into {cache}', cache=cache)
             ext = os.path.splitext(self.destination)[1][1:]
             if ext == 'zip':
                 with zipfile.ZipFile(self.destination, "r") as zf:
