@@ -248,6 +248,7 @@ def process_unlabeled(path, trained_model, ignore_columns=None):
     with io.open(path, encoding="utf8") as f:
         return process_unlabeled_stream(f, trained_model, ignore_columns)
 
+
 def process_unlabeled_stream(stream, trained_model, ignore_columns=None):
     """Creates a dataset object for an unlabeled dataset.
 
@@ -274,7 +275,11 @@ def process_unlabeled_stream(stream, trained_model, ignore_columns=None):
                           train_info.tokenize, train_info.include_lengths)
 
     begin = timer()
-    dataset_args = {'fields': fields, 'column_naming': column_naming}
+    dataset_args = {
+        'fields': fields,
+        'column_naming': column_naming,
+        'format': 'csv'
+    }
     dataset = MatchingDataset(stream=stream, **dataset_args)
 
     # Make sure we have the same attributes.
@@ -299,6 +304,7 @@ def process_unlabeled_stream(stream, trained_model, ignore_columns=None):
     }
 
     after_vocab = timer()
-    logger.info('Vocab update time: {delta}s', delta=(after_vocab - after_load))
+    logger.info('Vocab update time: {delta}s',
+                delta=(after_vocab - after_load))
 
     return dataset

@@ -610,7 +610,7 @@ class MatchingDataset(data.Dataset):
                              if d is not None)
 
             after_load = timer()
-            logger.info('Data load took: {time}s',time=(after_load - begin))
+            logger.info('Data load took: {time}s', time=(after_load - begin))
 
             fields_set = set(fields_dict.values())
             for field in fields_set:
@@ -619,23 +619,22 @@ class MatchingDataset(data.Dataset):
                                       vectors=embeddings,
                                       cache=embeddings_cache)
             after_vocab = timer()
-            logger.info('Vocab construction time: {time}s', time=(after_vocab -
-                                                              after_load))
+            logger.info('Vocab construction time: {time}s',
+                        time=(after_vocab - after_load))
 
             if train:
                 datasets[0].compute_metadata(train_pca)
             after_metadata = timer()
-            logger.info(
-                'Metadata computation time: {time}s', time=(after_metadata -
-                                                        after_vocab))
+            logger.info('Metadata computation time: {time}s',
+                        time=(after_metadata - after_vocab))
 
             if cache:
                 MatchingDataset.save_cache(datasets, fields_dict, datafiles,
                                            cachefile, column_naming,
                                            state_args)
                 after_cache = timer()
-                logger.info('Cache save time: {time}s', time=after_cache -
-                                                          after_vocab))
+                logger.info('Cache save time: {time}s',
+                            time=(after_cache - after_vocab))
 
         if train:
             datasets[0].finalize_metadata()
