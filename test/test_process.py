@@ -6,8 +6,9 @@ from test import test_dir_path
 
 from nose.tools import *
 
+from deepmatcher.data.dataset import Schema
 from deepmatcher.data.field import FastText
-from deepmatcher.data.process import _check_header, _make_fields, process, process_unlabeled
+from deepmatcher.data.process import process, process_unlabeled
 from torchtext.utils import unicode_csv_reader
 from deepmatcher import MatchingModel
 from urllib.parse import urljoin
@@ -26,8 +27,7 @@ class CheckHeaderTestCases(unittest.TestCase):
         label_attr = 'label'
         left_prefix = 'left'
         right_prefix = 'right'
-        _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                      [])
+        Schema(header, id_attr, label_attr, left_prefix, right_prefix, [])
 
     @raises(ValueError)
     def test_check_header_2(self):
@@ -41,8 +41,13 @@ class CheckHeaderTestCases(unittest.TestCase):
         label_attr = 'label'
         left_prefix = 'left'
         right_prefix = 'bb'
-        _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                      [])
+        Schema(
+            header,
+            id_attr,
+            label_attr,
+            left_prefix,
+            right_prefix,
+        )
 
     @raises(ValueError)
     def test_check_header_3(self):
@@ -56,8 +61,7 @@ class CheckHeaderTestCases(unittest.TestCase):
         label_attr = 'label'
         left_prefix = 'aa'
         right_prefix = 'right'
-        _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                      [])
+        Schema(header, id_attr, label_attr, left_prefix, right_prefix)
 
     @raises(ValueError)
     def test_check_header_5(self):
@@ -71,8 +75,7 @@ class CheckHeaderTestCases(unittest.TestCase):
         label_attr = ''
         left_prefix = 'left'
         right_prefix = 'right'
-        _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                      [])
+        Schema(header, id_attr, label_attr, left_prefix, right_prefix)
 
     @raises(AssertionError)
     def test_check_header_6(self):
@@ -87,8 +90,7 @@ class CheckHeaderTestCases(unittest.TestCase):
         label_attr = 'label'
         left_prefix = 'left'
         right_prefix = 'right'
-        _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                      [])
+        Schema(header, id_attr, label_attr, left_prefix, right_prefix)
 
 
 class MakeFieldsTestCases(unittest.TestCase):
@@ -106,11 +108,11 @@ class MakeFieldsTestCases(unittest.TestCase):
         ])
         id_attr = '_id'
         label_attr = 'label'
-        fields = _make_fields(header, id_attr, label_attr,
-                              ['ltable_id', 'rtable_id'], True, 'nltk', True)
-        self.assertEqual(len(fields), 12)
+        schema = Schema(header, id_attr, label_attr,
+                        ['ltable_id', 'rtable_id'], True, 'nltk', True)
+        self.assertEqual(len(schema.fields), 12)
         counter = {}
-        for tup in fields:
+        for tup in schema.fields:
             if tup[1] not in counter:
                 counter[tup[1]] = 0
             counter[tup[1]] += 1

@@ -1,10 +1,6 @@
 import copy
 import io
 import logging
-import os
-from timeit import default_timer as timer
-
-import six
 
 from torchtext.utils import unicode_csv_reader
 
@@ -13,71 +9,7 @@ from .field import MatchingField
 
 logger = logging.getLogger(__name__)
 
-
-def _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                  ignore_columns):
-    r"""Verify CSV file header.
-
-    Checks that:
-    * There is a label column
-    * There is an ID column
-    * All columns except the label and ID columns, and ignored columns start with either
-        the left table attribute prefix or the right table attribute prefix.
-    * The number of left and right table attributes are the same.
-    """
-    # assert id_attr in header
-    if label_attr:
-        assert label_attr in header
-
-    for attr in header:
-        if attr not in (id_attr, label_attr) and attr not in ignore_columns:
-            if not attr.startswith(left_prefix) and not attr.startswith(
-                    right_prefix):
-                raise ValueError(
-                    'Attribute ' + attr + ' is not a left or a right table '
-                    'column, not a label or id and is not ignored. Not sure '
-                    'what it is...')
-
-    num_left = sum(attr.startswith(left_prefix) for attr in header)
-    num_right = sum(attr.startswith(right_prefix) for attr in header)
-    assert num_left == num_right
-
-
-def _make_fields(header, id_attr, label_attr, ignore_columns, lower, tokenize,
-                 include_lengths):
-    r"""Create field metadata, i.e., attribute processing specification for each
-    attribute.
-
-    This includes fields for label and ID columns.
-
-    Returns:
-        list(tuple(str, MatchingField)): A list of tuples containing column name
-            (e.g. "left_address") and corresponding :class:`~data.MatchingField` pairs,
-            in the same order that the columns occur in the CSV file.
-    """
-
-    text_field = MatchingField(lower=lower,
-                               tokenize=tokenize,
-                               init_token='<<<',
-                               eos_token='>>>',
-                               batch_first=True,
-                               include_lengths=include_lengths)
-    numeric_field = MatchingField(sequential=False,
-                                  preprocessing=int,
-                                  use_vocab=False)
-    id_field = MatchingField(sequential=False, use_vocab=False, id=True)
-
-    fields = []
-    for attr in header:
-        if attr == id_attr:
-            fields.append((attr, id_field))
-        elif attr == label_attr:
-            fields.append((attr, numeric_field))
-        elif attr in ignore_columns:
-            fields.append((attr, None))
-        else:
-            fields.append((attr, text_field))
-    return fields
+import collections
 
 
 def _maybe_download_nltk_data():
@@ -191,17 +123,7 @@ def process(path,
         left_prefix = 'ltable_'
         right_prefix = 'rtable_'
 
-    # TODO(Sid): check for all datasets to make sure the files exist and have the same schema
-    a_dataset = train or validation or test
-    with io.open(os.path.expanduser(os.path.join(path, a_dataset)),
-                 encoding="utf8") as f:
-        header = next(unicode_csv_reader(f))
-
     _maybe_download_nltk_data()
-    _check_header(header, id_attr, left_prefix, right_prefix, label_attr,
-                  ignore_columns)
-    fields = _make_fields(header, id_attr, label_attr, ignore_columns,
-                          lowercase, tokenize, include_lengths)
 
     column_naming = {
         'id': id_attr,
@@ -210,18 +132,18 @@ def process(path,
         'label': label_attr
     }
 
-    datasets = MatchingDataset.splits(path,
-                                      train,
-                                      validation,
-                                      test,
-                                      fields,
-                                      embeddings,
-                                      embeddings_cache_path,
-                                      column_naming,
-                                      cache,
-                                      check_cached_data,
-                                      auto_rebuild_cache,
-                                      train_pca=pca)
+    datasets = splits(path,
+                      train,
+                      validation,
+                      test,
+                      fields,
+                      embeddings,
+                      embeddings_cache_path,
+                      column_naming,
+                      cache,
+                      check_cached_data,
+                      auto_rebuild_cache,
+                      train_pca=pca)
 
     # Save additional information to train dataset.
     datasets[0].ignore_columns = ignore_columns
@@ -249,7 +171,7 @@ def process_unlabeled(path, trained_model, ignore_columns=None):
         return process_unlabeled_stream(f, trained_model, ignore_columns)
 
 
-def process_unlabeled_stream(stream, trained_model, ignore_columns=None):
+def process_unlabeled_dataset(dataset, trained_model, ignore_columns=None):
     """Creates a dataset object for an unlabeled dataset.
 
     Args:
@@ -262,28 +184,12 @@ def process_unlabeled_stream(stream, trained_model, ignore_columns=None):
         ignore_columns (list):
             A list of columns to ignore in the unlabeled CSV file.
     """
-    header = next(unicode_csv_reader(stream))
-
-    train_info = trained_model.meta
-    if ignore_columns is None:
-        ignore_columns = train_info.ignore_columns
-    column_naming = dict(train_info.column_naming)
-    column_naming['label'] = None
-
-    fields = _make_fields(header, column_naming['id'], column_naming['label'],
-                          ignore_columns, train_info.lowercase,
-                          train_info.tokenize, train_info.include_lengths)
-
-    begin = timer()
-    dataset_args = {
-        'fields': fields,
-        'column_naming': column_naming,
-        'format': 'csv'
-    }
-    dataset = MatchingDataset(stream=stream, **dataset_args)
+    vocabs = ""
+    embeddings = ""
+    cache = ""
 
     # Make sure we have the same attributes.
-    assert set(dataset.all_text_fields) == set(train_info.all_text_fields)
+    assert set(dataset.all_text_fields) == set(dataset.all_text_fields)
 
     after_load = timer()
     logger.info('Data load time: {delta}s', delta=(after_load - begin))
@@ -292,15 +198,15 @@ def process_unlabeled_stream(stream, trained_model, ignore_columns=None):
     for field, name in reverse_fields_dict.items():
         if field is not None and field.use_vocab:
             # Copy over vocab from original train data.
-            field.vocab = copy.deepcopy(train_info.vocabs[name])
+            field.vocab = copy.deepcopy(vocabs[name])
             # Then extend the vocab.
             field.extend_vocab(dataset,
-                               vectors=train_info.embeddings,
-                               cache=train_info.embeddings_cache)
+                               vectors=embeddings,
+                               cache=embeddings_cache)
 
     dataset.vocabs = {
         name: dataset.fields[name].vocab
-        for name in train_info.all_text_fields
+        for name in dataset.all_text_fields
     }
 
     after_vocab = timer()

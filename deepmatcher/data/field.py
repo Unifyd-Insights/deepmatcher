@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class FastText(vocab.Vectors):
-
-    def __init__(self,
-                 suffix='wiki-news-300d-1M.vec.zip',
-                 url_base='https://s3-us-west-1.amazonaws.com/fasttext-vectors/',
-                 **kwargs):
+    def __init__(
+            self,
+            suffix='wiki-news-300d-1M.vec.zip',
+            url_base='https://s3-us-west-1.amazonaws.com/fasttext-vectors/',
+            **kwargs):
         url = url_base + suffix
         base, ext = os.path.splitext(suffix)
         name = suffix if ext == '.vec' else base
@@ -82,7 +82,6 @@ class FastTextBinary(vocab.Vectors):
 
 
 class MatchingVocab(vocab.Vocab):
-
     def extend_vectors(self, tokens, vectors):
         tot_dim = sum(v.dim for v in vectors)
         prev_len = len(self.itos)
@@ -119,15 +118,15 @@ class MatchingField(data.Field):
         super(MatchingField, self).__init__(tokenize=tokenize, **kwargs)
 
     @staticmethod
-    def _get_tokenizer(tokenizer):
-        if tokenizer == 'nltk':
+    def _get_tokenizer(tokenize):
+        if tokenize == 'nltk':
             return nltk.word_tokenize
-        return tokenizer
+        return tokenize
 
     def preprocess_args(self):
         attrs = [
-            'sequential', 'init_token', 'eos_token', 'unk_token', 'preprocessing',
-            'lower', 'tokenizer_arg'
+            'sequential', 'init_token', 'eos_token', 'unk_token',
+            'preprocessing', 'lower', 'tokenizer_arg'
         ]
         args_dict = {attr: getattr(self, attr) for attr in attrs}
         for param, arg in list(six.iteritems(args_dict)):
@@ -149,13 +148,15 @@ class MatchingField(data.Field):
                     parts = vec_name.split('.')
                     if parts[0] == 'fasttext':
                         if parts[2] == 'bin':
-                            vec_data = FastTextBinary(language=parts[1], cache=cache)
+                            vec_data = FastTextBinary(language=parts[1],
+                                                      cache=cache)
                         elif parts[2] == 'vec' and parts[1] == 'wiki':
                             vec_data = FastText(
-                                suffix='wiki-news-300d-1M.vec.zip', cache=cache)
+                                suffix='wiki-news-300d-1M.vec.zip',
+                                cache=cache)
                         elif parts[2] == 'vec' and parts[1] == 'crawl':
-                            vec_data = FastText(
-                                suffix='crawl-300d-2M.vec.zip', cache=cache)
+                            vec_data = FastText(suffix='crawl-300d-2M.vec.zip',
+                                                cache=cache)
                 if vec_data is None:
                     vec_data = vocab.pretrained_aliases[vec_name](cache=cache)
                 cls._cached_vec_data[vec_name] = vec_data
@@ -170,15 +171,16 @@ class MatchingField(data.Field):
             cache = os.path.expanduser(cache)
         if vectors is not None:
             vectors = MatchingField._get_vector_data(vectors, cache)
-        super(MatchingField, self).build_vocab(*args, vectors=vectors, **kwargs)
+        super(MatchingField, self).build_vocab(*args,
+                                               vectors=vectors,
+                                               **kwargs)
 
     def extend_vocab(self, *args, vectors=None, cache=None):
         sources = []
         for arg in args:
             if isinstance(arg, data.Dataset):
                 sources += [
-                    getattr(arg, name)
-                    for name, field in arg.fields.items()
+                    getattr(arg, name) for name, field in arg.fields.items()
                     if field is self
                 ]
             else:
@@ -198,7 +200,8 @@ class MatchingField(data.Field):
 
     def numericalize(self, arr, *args, **kwargs):
         if not self.is_id:
-            return super(MatchingField, self).numericalize(arr, *args, **kwargs)
+            return super(MatchingField,
+                         self).numericalize(arr, *args, **kwargs)
         return arr
 
 
